@@ -77,6 +77,7 @@ SF_EOL=0o14
 SF_EOT=0o04
 
 def view(name):
+    'for use in Jupyter notebooks'
     try:
         from IPython.display import Image
         png = name+'.png'
@@ -738,17 +739,17 @@ class Input(_File):
                 if data_format=='native_float':
                     self.type='float'
                     self.form='native'
-                    esize=4
+                    self.esize=4
                     self.datatype=np.float32
                 elif data_format=='native_complex':
                     self.type='complex'
                     self.form='native'
-                    esize=8
+                    self.esize=8
                     self.datatype=np.complex64
                 elif data_format=='native_int':
                     self.type='int'
                     self.form='native'
-                    esize=4
+                    self.esize=4
                     self.datatype=np.int32
                 else:
                     sys.stderr.write('error reading from input file.\n')
@@ -857,9 +858,9 @@ class Input(_File):
             #data[:]=np.frombuffer(self.f,dtype=self.datatype,count=datacount)
 
             if hasattr(self.f,'buffer'):
-               buf = self.f.buffer.read(datacount*4)
+               buf = self.f.buffer.read(datacount*self.esize)
             else:
-               buf = self.f.read(datacount*4)
+               buf = self.f.read(datacount*self.esize)
             data[:] = np.frombuffer(buf, dtype=self.datatype)
 
             data=data.reshape(shape)
@@ -1020,8 +1021,11 @@ class Input(_File):
         look up nm from the rsf file header (aka history) and return the string value
         '''
         if _swig_:
-           # c function only knows about utf-8 (ascii).  translate the unicode
-           return c_rsf.sf_histstring(self.file,nm.encode('utf-8'))
+            if sys.version_info[0] >= 3:
+                return c_rsf.sf_histstring(self.file,nm)
+            # c function only knows about utf-8 (ascii).  translate the unicode
+            else:
+                return c_rsf.sf_histstring(self.file,nm.encode('utf-8'))
         else:
             try:
                 return self.vd[nm]
