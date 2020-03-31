@@ -249,8 +249,12 @@ int main(int argc, char *argv[])
     cudaMemcpy(d_vv, vv, nz*nx*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemset(d_sp0,0,nz*nx*sizeof(float));
     cudaMemset(d_sp1,0,nz*nx*sizeof(float));
-    cuda_ricker_wavelet<<<(nt+511)/512,512>>>(d_wlt, amp, fm, dt, nt);
-    /* configure source/geophone geometry */
+    if (fm==0) {
+        cuda_dirac_wavelet<<<(nt+511)/512,512>>>(d_wlt, amp, fm, dt, nt);
+    } else { 
+        cuda_ricker_wavelet<<<(nt+511)/512,512>>>(d_wlt, amp, fm, dt, nt);
+    }
+        /* configure source/geophone geometry */
     if (!(sxbeg>=0 && szbeg>=0 && sxbeg+(ns-1)*jsx<nx1 && szbeg+(ns-1)*jsz<nz1))	
     { sf_error("sources exceeds the computing zone!"); exit(1);}
     cuda_set_sg<<<(ns+511)/512,512>>>(d_sxz, sxbeg, szbeg, jsx, jsz, ns, nz);

@@ -50,7 +50,7 @@ __global__ void cuda_set_sg(int *sxz, int sxbeg, int szbeg, int jsx, int jsz, in
 }
 
 __global__ void cuda_ricker_wavelet(float *wlt, float amp, float fm, float dt, int nt)
-/*< generate ricker wavelet with time deley >*/
+/*< generate ricker wavelet with time delay >*/
 {
 	int it=threadIdx.x+blockDim.x*blockIdx.x;
 	if (it<nt)
@@ -58,6 +58,16 @@ __global__ void cuda_ricker_wavelet(float *wlt, float amp, float fm, float dt, i
 		float tmp = PI*fm*(it*dt-1.0/fm);
 		tmp *=tmp;
 		wlt[it]=amp*(1.0-2.0*tmp)*expf(-tmp);
+	}
+}
+
+__global__ void cuda_dirac_wavelet(float *wlt, float amp, float fm, float dt, int nt)
+/*< generate dirac wavelet with one time step delay >*/
+{
+	int it=threadIdx.x+blockDim.x*blockIdx.x;
+	if (it == 0)
+	{
+		wlt[it] = amp;
 	}
 }
 
