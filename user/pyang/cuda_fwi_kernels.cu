@@ -131,7 +131,7 @@ __global__ void cuda_step_forward(float *p0, float *p1, float *vv, float dtz, fl
 		float c1=v1*v1*(s_p1[threadIdx.y+1][threadIdx.x+2]-2.0*s_p1[threadIdx.y+1][threadIdx.x+1]+s_p1[threadIdx.y+1][threadIdx.x]);
 		float c2=v2*v2*(s_p1[threadIdx.y+2][threadIdx.x+1]-2.0*s_p1[threadIdx.y+1][threadIdx.x+1]+s_p1[threadIdx.y][threadIdx.x+1]);
 /*
-  if(i1==0)// top boundary is free surface boundary condition, commentted!!
+  if(i1==0)// top boundary is free surface boundary condition, absorption is commented out !!
   {
   c1=v1*(-s_p1[threadIdx.y+1][threadIdx.x+1]+s_p1[threadIdx.y+1][threadIdx.x+2]
   +s_p0[threadIdx.y+1][threadIdx.x+1]-s_p0[threadIdx.y+1][threadIdx.x+2]);
@@ -286,7 +286,7 @@ __global__ void cuda_scale_gradient(float *g1, float *vv, float *illum, int nz, 
 	if (i1<nz && i2<nx) 
 	{
 		float a=vv[id];
-		if (precon) a*=sqrtf(illum[id]+EPS);/*precondition with residual wavefield illumination*/
+		if (precon) a*=(illum[id]+EPS);/*precondition with residual wavefield illumination*/
 		g1[id]*=2.0/a;
 	}
 }
@@ -487,6 +487,7 @@ __global__ void cuda_update_vel(float *vv, float *cg, float alpha, int nz, int n
 	int id=i1+i2*nz;
 
 	if (i1<nz && i2<nx) vv[id]=vv[id]+alpha*cg[id];
+	if (i1<nz && i2<nx) vv[id]=fmaxf(1500, fminf(5000, vv[id]));
 }
 
 __global__ void cuda_bell_smoothz(float *g, float *smg, int rbell, int nz, int nx)
