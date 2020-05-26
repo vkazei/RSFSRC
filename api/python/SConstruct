@@ -29,6 +29,7 @@ if root:
                 env.InstallAs(os.path.join(pkgdir,'api.py'),module+'.py')
                 env.InstallAs(os.path.join(pkgdir,'api.pyc'),module+'.pyc')
                 env.Install(bindir,module+'test')
+        env.Install(pydir, 'rsft.py')
     except:
         pass
 
