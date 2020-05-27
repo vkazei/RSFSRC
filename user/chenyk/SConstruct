@@ -117,6 +117,7 @@ for prog in ccmains:
 ######################################################################
 
 mpicc  = env.get('MPICC')
+print(mpicc)
 mpimains = Split(mpiprogs)
 
 mpilib = os.environ.get("MPILIB")
@@ -151,12 +152,12 @@ for prog in cuda_mains:
         cc = env.get('CC')
         cflags = env.get('CUDAFLAGS')
         ldflags = '-lcublas -lcufft -lcusparse'
-        if string.rfind(cc,'icc') >= 0:
+        if cc.rfind('icc') >= 0:
             cflags = cflags + ' -ccbin=%s' % cc
             ldflags = '-ccbin=%s' % cc
         #You need to revise here based on your system
-        env.Prepend(CPPPATH=['/usr/include/mpich-3.2-x86_64/'],
-                    LIBPATH=['/usr/lib64/mpich-3.2/lib'],
+        env.Prepend(CPPPATH=['/usr/include/mpi/'],
+                    LIBPATH=['/usr/include/mpi/'],
                     LIBS=['mpi'])
         prog = env.Program(prog,cfile,
                            CC=NVCC,
