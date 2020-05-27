@@ -52,7 +52,7 @@ def write_arr(fname, arr):
     return 0
 
 def parse_header_to_dict(header):
-    'Parse RSF header into a dictionary of variables, modified from m8r.py'
+    """Parse RSF header into a dictionary of variables, modified from m8r.py"""
     vd = {}  # variable dictionary
     ilist = header.split()
     pos = 0
@@ -91,6 +91,7 @@ def parse_header_to_dict(header):
     return vd
 
 class rsf():
+    """ class for rsf = fname + numpy array + variable dictionary """
     def __init__(self, fname):
         self.fname = fname
         self.arr = sf.Input(fname).read()
