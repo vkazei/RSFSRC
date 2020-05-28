@@ -7,6 +7,11 @@ import os
 def cmd(command, return_output=False):
     """Run command and pipe what you would see in terminal into the output cell.
     If return_output=True the output is returned as a string.
+    
+    Args:
+    input: command (string) to be executed in the terminal
+    output: nothing, or the output from the terminal (return_output=True)
+    
     """
     process = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
     while True:
@@ -25,12 +30,25 @@ def cmd(command, return_output=False):
     return rc
 
 def to_np(fname):
+    '''
+    return numpy array read from .rsf file
+    
+    input: file name
+    output: numpy array axis 0 is matching
+    '''
     f = sf.Input(fname)
-    return f.read().T
+    np_arr = f.read().T
+    
+    assert np_arr.shape[0] == f.get("n1")
+    return np_arr
 
 def vd(fname):
     '''
     parses header from the fname to variable dictionary
+    
+    input: file name
+    output : variable dictionary vd, 
+    e.g. vd["n1"] first dimension in rsf file
     '''
     header = cmd(f"sfin {fname}", return_output=True)
     print(header)
@@ -39,6 +57,8 @@ def vd(fname):
 def write_vd(fname, vd):
     '''
     writes variable dictionary to header of the file fname
+    
+    input: file name, variable dictionary
     '''
     f = sf.Output(fname)
     for key, val in vd.items():
@@ -47,12 +67,24 @@ def write_vd(fname, vd):
     return 0
 
 def write_arr(fname, arr):
+    '''
+    writes array to a file fname
+    (?need to check shapes before writing?)
+    
+    input:  file name, numpy array
+    '''
     f = sf.Output(fname)
     f.write(arr)
+    f.close()
+    assert 
     return 0
 
 def parse_header_to_dict(header):
-    """Parse RSF header into a dictionary of variables, modified from m8r.py"""
+    """Parse RSF header into a dictionary of variables, modified from m8r.py
+    
+    input: header -- string
+    output: dictionary of variables
+    """
     vd = {}  # variable dictionary
     ilist = header.split()
     pos = 0
@@ -94,8 +126,7 @@ class rsf():
     """ class for rsf = fname + numpy array + variable dictionary """
     def __init__(self, fname):
         self.fname = fname
-        self.arr = sf.Input(fname).read()
-        self.vd = vd(fname)
+        self.read()
     
     def write(self):
         write_vd(self.fname, self.vd)
