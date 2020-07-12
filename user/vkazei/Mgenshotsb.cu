@@ -112,11 +112,11 @@ int main(int argc, char *argv[])
     int is, it,kt, distx, distz;
     int sxbeg,szbeg,gxbeg,gzbeg,jsx,jsz,jgx,jgz;
     float dx, dz, fm, dt, dtx, dtz, mstimer, amp, totaltime=0;
-    float *v0, *dobs, *vv, *trans, *ptr=NULL;
+    float *v0, *rho0, *dobs, *vv, *rho, *trans, *ptr=NULL;
     /* variables on device */
     int 	*d_sxz, *d_gxz;			
-    float 	*d_wlt, *d_vv, *d_sp0, *d_sp1, *d_dobs;
-    sf_file vinit, shots, check=NULL, time;
+    float 	*d_wlt, *d_vv, *d_rho, *d_sp0, *d_sp1, *d_dobs;
+    sf_file vinit, rhoinit, shots, check=NULL, time;
 
     // Print out specs of the main GPU
     cudaDeviceProp deviceProp;
@@ -134,7 +134,8 @@ int main(int argc, char *argv[])
     /* initialize Madagascar */
     sf_init(argc,argv);
     /*< set up I/O files >*/
-    vinit=sf_input ("in");   /* initial velocity model, unit=m/s */
+    vinit=sf_input("in");   /* initial velocity model, unit=m/s */
+    rhoinit=sf_input("rho");
     shots=sf_output("out");  /* output image with correlation imaging condition */ 
     time=sf_output("time");  /* output total time */
     
@@ -143,6 +144,11 @@ int main(int argc, char *argv[])
     if (!sf_histint(vinit,"n2",&nx1)) sf_error("no n2");/* n2 */
     if (!sf_histfloat(vinit,"d1",&dz)) sf_error("no d1");/* d1 */
     if (!sf_histfloat(vinit,"d2",&dx)) sf_error("no d2");/* d2 */
+
+    if (!sf_histint(rhoinit,"n1",&nz1)) sf_error("no n1");/* n1 */
+    if (!sf_histint(rhoinit,"n2",&nx1)) sf_error("no n2");/* n2 */
+    if (!sf_histfloat(rhoinit,"d1",&dz)) sf_error("no d1");/* d1 */
+    if (!sf_histfloat(rhoinit,"d2",&dx)) sf_error("no d2");/* d2 */
 
     
     
@@ -224,10 +230,14 @@ int main(int argc, char *argv[])
     /* allocate memory for variables on host */
     v0=(float*)malloc(nz1*nx1*sizeof(float));
     vv=(float*)malloc(nz*nx*sizeof(float));
+    rho0=(float*)malloc(nz1*nx1*sizeof(float));
+    rho=(float*)malloc(nz*nx*sizeof(float));
     dobs=(float*)malloc(ng*nt*sizeof(float));
     trans=(float*)malloc(ng*nt*sizeof(float));
     sf_floatread(v0,nz1*nx1,vinit);
+    sf_floatread(rho0,nz1*nx1,rhoinit);
     expand(vv, v0, nz, nx, nz1, nx1);
+    expand(rho, rho0, nz, nx, nz1, nx1);
     memset(dobs,0,ng*nt*sizeof(float));
     memset(trans,0,ng*nt*sizeof(float));
 
@@ -235,6 +245,7 @@ int main(int argc, char *argv[])
     sf_check_gpu_error("Failed to initialize device!");
     /* allocate memory for variables on device */
     cudaMalloc(&d_vv, nz*nx*sizeof(float));
+    cudaMalloc(&d_rho, nz*nx*sizeof(float));
     cudaMalloc(&d_sp0, nz*nx*sizeof(float));
     cudaMalloc(&d_sp1, nz*nx*sizeof(float));
     cudaMalloc(&d_wlt, nt*sizeof(float));
@@ -247,6 +258,7 @@ int main(int argc, char *argv[])
     dim3 dimg=dim3(nz/Block_Size1, nx/Block_Size2), dimb=dim3(Block_Size1, Block_Size2); 
 
     cudaMemcpy(d_vv, vv, nz*nx*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_rho, rho, nz*nx*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemset(d_sp0,0,nz*nx*sizeof(float));
     cudaMemset(d_sp1,0,nz*nx*sizeof(float));
     if (fm==0) {
@@ -286,7 +298,7 @@ int main(int argc, char *argv[])
         for(it=0; it<nt; it++)
         {
             cuda_add_source<<<1,1>>>(d_sp1, &d_wlt[it], &d_sxz[is], 1, true);
-            cuda_step_forward<<<dimg,dimb>>>(d_sp0, d_sp1, d_vv, dtz, dtx, nz, nx);
+            cuda_step_forward<<<dimg,dimb>>>(d_sp0, d_sp1, d_vv, d_rho, dtz, dtx, nz, nx);
             ptr=d_sp0; d_sp0=d_sp1; d_sp1=ptr;
             cuda_record<<<(ng+511)/512, 512>>>(d_sp0, &d_dobs[it*ng], d_gxz, ng);
 
@@ -320,11 +332,14 @@ int main(int argc, char *argv[])
 
     /* free host variables */
     free(v0);
+    free(rho0);
     free(vv);
+    free(rho);
     free(dobs);
     free(trans);
     /* free device variables */
     cudaFree(d_vv);
+    cudaFree(d_rho);
     cudaFree(d_sp0);
     cudaFree(d_sp1);
     cudaFree(d_wlt);
